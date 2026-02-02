@@ -93,6 +93,15 @@ st.markdown("""
         border: 1px solid #00ffff !important;
         color: #00ffff !important;
     }
+    /* 전체 화면 커서 변경 */
+html, body, .main {
+    cursor: crosshair !important;
+}
+
+/* 버튼이나 클릭 가능한 요소 위에서의 커서 */
+button, a, [data-testid="stFileUploadDropzone"] {
+    cursor: pointer !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
