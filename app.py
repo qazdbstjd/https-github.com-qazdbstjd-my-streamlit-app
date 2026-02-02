@@ -42,7 +42,7 @@ st.markdown("""
     }
     .title-main {
         font-size: 40px !important;
-        font-weight: 900 !important;
+        font-weight: 800 !important;
         line-height: 1.2;
         margin: 0;
         color: #00ffff !important;
