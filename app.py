@@ -4,157 +4,205 @@ import tempfile
 import os
 from ultralytics import YOLO
 import time
+import numpy as np
 
-# --- Setup ---
-st.set_page_config(page_title="ObjectTrace - Created by Yunseong", layout="wide")
+# 1. 페이지 설정 (블랙 테마 유지)
+st.set_page_config(page_title="Created by Yun Seong #1 : 📹OBJECT TRACE", layout="wide")
 
+# 2. 강력한 레트로 브루탈리즘 CSS 적용
 st.markdown("""
-    <style>
-    /* 폰트를 코딩 폰트 느낌으로 통일 */
-    @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
-    
-    html, body, [class*="css"], .main {
-        font-family: 'Roboto Mono', monospace !important;
-        background-color: #ffffff; /* 흰색 배경 */
-        color: #0000ff; /* 파란색 글자 */
+<style>
+    /* 구글 모노스페이스 폰트 로드 */
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap');
+
+    /* 전체 배경 및 기본 텍스트 설정 */
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        background-color: #000000 !important;
+        font-family: 'JetBrains Mono', monospace !important;
     }
 
-    /* 사이드바 스타일 */
+    /* 사이드바 스타일링 */
     [data-testid="stSidebar"] {
-        background-color: #0000ff !important; /* 파란색 배경 */
-        border-right: 2px solid #0000ff;
-    }
-    [data-testid="stSidebar"] * {
-        color: #ffffff !important; /* 사이드바 내부 흰색 글자 */
+        background-color: #000000 !important;
+        border-right: 3px solid #00ffff !important;
     }
 
-    /* 메인 타이틀 (강조) */
-    .stHeading h1 {
-        background-color: #0000ff; /* 배경 파랑 */
-        color: #ffffff !important; /* 글자 흰색 */
-        padding: 10px;
+    /* 모든 텍스트 컬러를 사이언(Cyan)으로 고정 */
+    h1, h2, h3, h4, p, label, .stMarkdown, span, .stMetric {
+        color: #00ffff !important;
+        text-transform: uppercase !important;
+    }
+
+    /* 메인 타이틀 박스 스타일 (포스터 느낌) */
+    .title-container {
+        border: 4px solid #00ffff;
+        padding: 20px;
+        margin-bottom: 30px;
         display: inline-block;
-        text-transform: uppercase;
-        letter-spacing: -1px;
+        background-color: #000000;
+    }
+    .title-main {
+        font-size: 50px !important;
+        font-weight: 800 !important;
+        line-height: 1.2;
+        margin: 0;
+        color: #00ffff !important;
     }
 
     /* 버튼 스타일 (반전 효과) */
-    .stButton>button {
-        border: 2px solid #0000ff !important;
-        background-color: #ffffff !important;
-        color: #0000ff !important;
+    div.stButton > button:first-child {
+        width: 100%;
+        background-color: #000000 !important;
+        color: #00ffff !important;
+        border: 3px solid #00ffff !important;
         border-radius: 0px !important;
-        font-weight: bold;
+        font-weight: 800 !important;
+        padding: 15px !important;
+        transition: 0.2s;
         text-transform: uppercase;
     }
-    .stButton>button:hover {
-        background-color: #0000ff !important;
-        color: #ffffff !important;
+    div.stButton > button:first-child:hover {
+        background-color: #00ffff !important;
+        color: #000000 !important;
     }
 
-    /* 슬라이더 및 입력창 컬러 */
-    .stSlider [data-baseweb="slider"] {
-        background-color: #0000ff;
+    /* 메트릭 박스 커스텀 */
+    [data-testid="stMetric"] {
+        border: 2px solid #00ffff;
+        padding: 15px;
+        background-color: #000000;
+    }
+    [data-testid="stMetricValue"] {
+        color: #00ffff !important;
+    }
+
+    /* 업로더 및 슬라이더 스타일 */
+    .stFileUploader, .stSlider {
+        border: 1px dashed #00ffff;
+        padding: 10px;
     }
     
-    /* 구분선 스타일 */
+    /* 구분선 */
     hr {
-        border: none;
-        border-top: 3px dashed #0000ff;
+        border-top: 4px double #00ffff !important;
     }
-    </style>
-    """, unsafe_allow_html=True)
 
+    /* Success/Error override */
+    .stAlert {
+        background-color: #000000 !important;
+        border: 1px solid #00ffff !important;
+        color: #00ffff !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-st.title("📹 ObjectTrace - Created by Yunseong")
-st.write("Upload a video to detect moving objects (Person, Car, etc.) using YOLOv8.")
-
-# --- Sidebar ---
-st.sidebar.header("Settings")
-model_type = st.sidebar.selectbox("Select Model", ["yolov8n.pt", "yolov8s.pt", "yolov8m.pt"])
-confidence_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.4, 0.05)
-
-# --- Main Logic ---
-
+# 3. 모델 로드 (캐시 사용)
 @st.cache_resource
 def load_model(model_name):
     return YOLO(model_name)
 
-try:
-    model = load_model(model_type)
-    st.sidebar.success(f"Model {model_type} loaded successfully!")
-except Exception as e:
-    st.sidebar.error(f"Error loading model: {e}")
+# 4. 사이드바 제어
+with st.sidebar:
+    st.markdown("### 01. SETUP")
+    model_type = st.sidebar.selectbox("MODEL_SELECT", ["yolov8n.pt", "yolov8s.pt", "yolov8m.pt"])
+    confidence_threshold = st.sidebar.slider("THRESHOLD", 0.0, 1.0, 0.4, 0.05)
+    st.write("---")
+    st.markdown("### STATUS: ACTIVE")
 
-uploaded_file = st.file_uploader("Choose a video file...", type=["mp4", "mov", "avi"])
+    try:
+        model = load_model(model_type)
+        st.success(f"SUCCESS: {model_type} LOADED")
+    except Exception as e:
+        st.error(f"ERROR: {e}")
 
+# 5. 메인 화면 구성
+st.markdown('<div class="title-container"><p class="title-main">S 4 A D # 3<br>OBJECT TRACE</p></div>', unsafe_allow_html=True)
+
+col_left, col_right = st.columns([3, 1])
+
+with col_left:
+    st.markdown("#### // VIDEO_INPUT")
+    uploaded_file = st.file_uploader("UPLOAD_FILE", type=["mp4", "mov", "avi"])
+    video_placeholder = st.empty()
+
+with col_right:
+    st.markdown("#### // ANALYTICS")
+    metric_placeholder = st.empty()
+    metric_placeholder.metric(label="ENTITIES_DETECTED", value="00", delta="SCANNING")
+    st.write("---")
+    status_text = st.empty()
+    status_text.info("SYSTEM_READY: WAITING FOR INPUT...")
+
+# 6. 분석 엔진 실행
 if uploaded_file is not None:
     # Save uploaded file to temp file
     tfile = tempfile.NamedTemporaryFile(delete=False)
     tfile.write(uploaded_file.read())
     video_path = tfile.name
 
-    st.video(video_path) # Show original video
+    with col_left:
+        video_placeholder.video(video_path) # Show original video
 
-    if st.button("Start Analysis"):
-        st.write("Analyzing...")
-        
-        cap = cv2.VideoCapture(video_path)
-        
-        # properties
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        
-        # Output setup
-        output_path = os.path.join(tempfile.gettempdir(), "output_annotated.mp4")
-        # Streamlit displays mp4 best with H264. OpenCV default might need conversion or specific codec.
-        # We try mp4v first. If browser issues occur, we might need ffmpeg conversion.
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-
-        st_frame = st.empty() # Placeholder for real-time updates
-        progress_bar = st.progress(0)
-        
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        curr_frame = 0
-
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            # Inference
-            results = model(frame, conf=confidence_threshold)
-            annotated_frame = results[0].plot() # YOLO built-in plotting
-
-            # Write to output video
-            out.write(annotated_frame)
-
-            # Display in Streamlit (convert BGR to RGB)
-            # We display every 3rd frame to improve preview performance during processing, or all if feasible.
-            # Showing every frame might slow down processing loop significantly.
-            # Let's show it:
-            st_frame.image(cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB), channels="RGB", use_container_width=True)
+    with col_right:
+        if st.button("START ANALYSIS"):
+            status_text.warning("ANALYZING...")
             
-            curr_frame += 1
-            if frame_count > 0:
-                progress_bar.progress(min(curr_frame / frame_count, 1.0))
+            cap = cv2.VideoCapture(video_path)
+            
+            # properties
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = int(cap.get(cv2.CAP_PROP_FPS))
+            
+            # Output setup
+            output_path = os.path.join(tempfile.gettempdir(), "output_annotated.mp4")
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
+            out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-        cap.release()
-        out.release()
-        
-        st.success("Analysis Complete!")
-        
-        # Provide download button
-        # Note: Browsers may not play 'mp4v' codec in <video> tag well, so we offer download primarily.
-        # To display the result in st.video(), it usually needs h264 encoding. 
-        # For now, we provide the file for download.
-        
-        with open(output_path, "rb") as file:
-            btn = st.download_button(
-                    label="Download Processed Video",
-                    data=file,
+            st_frame = st.empty() # Placeholder for real-time updates
+            progress_bar = st.progress(0)
+            
+            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            curr_frame = 0
+
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                # Inference
+                results = model(frame, conf=confidence_threshold)
+                annotated_frame = results[0].plot() # YOLO built-in plotting
+
+                # Write to output video
+                out.write(annotated_frame)
+
+                # Update Video Column
+                with col_left:
+                    st_frame.image(cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB), channels="RGB", use_container_width=True)
+                
+                # Update Analytics Column
+                with col_right:
+                    obj_count = len(results[0].boxes)
+                    metric_placeholder.metric("ENTITIES_DETECTED", f"{obj_count:02d}", delta="ACTIVE")
+                
+                curr_frame += 1
+                if frame_count > 0:
+                    progress_bar.progress(min(curr_frame / frame_count, 1.0))
+
+            cap.release()
+            out.release()
+            
+            status_text.success("SUCCESS: ANALYSIS_COMPLETE")
+            
+            # Provide download button
+            with open(output_path, "rb") as file:
+                btn = st.download_button(
+                        label="DOWNLOAD_PROCESSED_VIDEO",
+                        data=file,
+                        file_name="processed_video.mp4",
+                        mime="video/mp4"
+                    )
                     file_name="processed_video.mp4",
                     mime="video/mp4"
                 )
