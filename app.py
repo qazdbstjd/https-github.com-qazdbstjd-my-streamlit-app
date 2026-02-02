@@ -6,7 +6,7 @@ from ultralytics import YOLO
 import time
 
 # --- Setup ---
-st.set_page_config(page_title="video Analysis Tool", layout="wide")
+st.set_page_config(page_title="ObjectTrace - Created by Yunseong", layout="wide")
 
 st.markdown("""
 <style>
